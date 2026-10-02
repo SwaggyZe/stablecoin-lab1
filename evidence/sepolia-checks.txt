@@ -1,0 +1,15 @@
+Ethereum Sepolia post-deployment read-only checks
+RPC: https://ethereum-sepolia-rpc.publicnode.com
+Recorded for the lab on 2026-10-02. Values are a snapshot, not a permanent guarantee.
+
+Chain ID: 11155111
+MockUSDC symbol: "mUSDC"
+MockUSDC decimals: 6
+SimpleStablecoin symbol: "sUSD"
+SimpleStablecoin decimals: 6
+Vault collateral: 0xc50a8D5Fb485B85E2Fc06ADEf1D6eD394F267FD0
+Vault stable: 0x0541A56b2BfFBdAbBa4e690656089D65b17DdFF6
+Vault has MINTER_ROLE: true
+Stable totalSupply: 0
+Vault totalCollateral: 0
+Stable paused: false

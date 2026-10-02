@@ -301,7 +301,7 @@ flowchart LR
 
 Liquidation requires a ratio below 120%. A liquidator must pay the whole debt even when collateral is insufficient; voluntary liquidation may be uneconomic. The mock oracle, permission model, and fixed decimal assumptions are educational limitations.
 
-Verified locally with Foundry v1.8.4 / Solidity 0.8.24: **29 tests passed, 0 failed**, including Ex7. The invariant run used 256 runs and 128,000 calls with zero reverts. See [test output](evidence/forge-test.txt), [environment checks](evidence/doctor.txt), and [actual local-chain execution](evidence/local-demo.txt). No Sepolia deployment or verification is claimed.
+Verified locally with Foundry v1.8.4 / Solidity 0.8.24: **29 tests passed, 0 failed**, including Ex7. The invariant run used 256 runs and 128,000 calls with zero reverts. See [test output](evidence/forge-test.txt), [environment checks](evidence/doctor.txt), and [actual local-chain execution](evidence/local-demo.txt). The completed Sepolia deployment and source verification are recorded below.
 
 Ex3 actual result: `totalSupply = 1000600000000`, `totalCollateral = 600000000` (both 6-decimal raw units). This demonstrates undercollateralization; there is no exchange price feed in this lab that measures a market depeg.
 
@@ -325,3 +325,24 @@ After restoring the original Ex5 acceptance-test file, the Codespaces run passed
 ![Ex5: ten original acceptance tests passed](evidence/ex5-tests.png)
 
 ![Codespaces: all 28 tests passed](evidence/forge-test.png)
+
+
+## Sepolia deployment and source verification (Tier 2)
+
+All three contracts were deployed to **Ethereum Sepolia (chain ID 11155111)** and verified on Etherscan. The original Codespaces verification output reports **“All (3) contracts were verified!”**.
+
+Deployer: `0x8dd34bBe1096BA2bf8107fD68E5374c177Ca459A`.
+
+| Contract | Sepolia address | Etherscan |
+|---|---|---|
+| MockUSDC | `0xc50a8D5Fb485B85E2Fc06ADEf1D6eD394F267FD0` | [Verified source](https://sepolia.etherscan.io/address/0xc50a8D5Fb485B85E2Fc06ADEf1D6eD394F267FD0#code) |
+| SimpleStablecoin | `0x0541A56b2BfFBdAbBa4e690656089D65b17DdFF6` | [Verified source](https://sepolia.etherscan.io/address/0x0541A56b2BfFBdAbBa4e690656089D65b17DdFF6#code) |
+| Vault | `0x4DD54bd095374E08D8D31967fBB919514D685242` | [Verified source](https://sepolia.etherscan.io/address/0x4DD54bd095374E08D8D31967fBB919514D685242#code) |
+
+Read-only checks confirmed that Vault's `collateral()` and `stable()` reference the two deployed tokens, both tokens use 6 decimals, and Vault has `MINTER_ROLE`. The stablecoin was not paused. At the initial post-deployment check, supply and collateral were both zero. See [the checks](evidence/sepolia-checks.txt) and [deployment record](evidence/sepolia-deployment.json).
+
+The Ex1 and Ex3 demonstrations above were executed on local Anvil. The addresses in this section are the public Sepolia deployments.
+
+The first broadcast encountered the delegated-account transaction-pool limit after deploying the two tokens. Deployment completed by resuming the saved transaction sequence with `--resume --slow`, confirming each transaction before sending the next.
+
+![Sepolia: all three contracts verified](evidence/sepolia-verified.png)

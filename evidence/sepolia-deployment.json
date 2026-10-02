@@ -1,0 +1,70 @@
+{
+  "network": "Ethereum Sepolia",
+  "chainId": 11155111,
+  "deployer": "0x8dd34bBe1096BA2bf8107fD68E5374c177Ca459A",
+  "contracts": {
+    "MockUSDC": {
+      "address": "0xc50a8D5Fb485B85E2Fc06ADEf1D6eD394F267FD0",
+      "etherscan": "https://sepolia.etherscan.io/address/0xc50a8D5Fb485B85E2Fc06ADEf1D6eD394F267FD0#code"
+    },
+    "SimpleStablecoin": {
+      "address": "0x0541A56b2BfFBdAbBa4e690656089D65b17DdFF6",
+      "etherscan": "https://sepolia.etherscan.io/address/0x0541A56b2BfFBdAbBa4e690656089D65b17DdFF6#code"
+    },
+    "Vault": {
+      "address": "0x4DD54bd095374E08D8D31967fBB919514D685242",
+      "etherscan": "https://sepolia.etherscan.io/address/0x4DD54bd095374E08D8D31967fBB919514D685242#code"
+    }
+  },
+  "verificationEvidence": {
+    "file": "sepolia-verified.png",
+    "reportedResult": "All (3) contracts were verified!"
+  },
+  "readOnlyChecks": [
+    {
+      "Check": "Chain ID",
+      "Result": "11155111"
+    },
+    {
+      "Check": "MockUSDC symbol",
+      "Result": "\"mUSDC\""
+    },
+    {
+      "Check": "MockUSDC decimals",
+      "Result": "6"
+    },
+    {
+      "Check": "SimpleStablecoin symbol",
+      "Result": "\"sUSD\""
+    },
+    {
+      "Check": "SimpleStablecoin decimals",
+      "Result": "6"
+    },
+    {
+      "Check": "Vault collateral",
+      "Result": "0xc50a8D5Fb485B85E2Fc06ADEf1D6eD394F267FD0"
+    },
+    {
+      "Check": "Vault stable",
+      "Result": "0x0541A56b2BfFBdAbBa4e690656089D65b17DdFF6"
+    },
+    {
+      "Check": "Vault has MINTER_ROLE",
+      "Result": "true"
+    },
+    {
+      "Check": "Stable totalSupply",
+      "Result": "0"
+    },
+    {
+      "Check": "Vault totalCollateral",
+      "Result": "0"
+    },
+    {
+      "Check": "Stable paused",
+      "Result": "false"
+    }
+  ],
+  "note": "These are public-chain addresses. Ex1 and Ex3 evidence records local Anvil operations."
+}
