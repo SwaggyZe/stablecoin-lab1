@@ -273,7 +273,7 @@ Question 4 is the door into next week's RWA lab.
 
 ## Completed lab: architecture and evidence
 
-See [the Chinese step-by-step guide](COMPLETION-GUIDE.zh-CN.md) and [discussion answers](STUDENT-QUESTIONS.md).
+See [discussion answers](STUDENT-QUESTIONS.md).
 
 ```mermaid
 flowchart LR
