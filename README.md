@@ -268,3 +268,60 @@ These have no standard answers. They are the real point of this lab:
    `totalCollateral()` invariant?
 
 Question 4 is the door into next week's RWA lab.
+
+---
+
+## Completed lab: architecture and evidence
+
+See [the Chinese step-by-step guide](COMPLETION-GUIDE.zh-CN.md) and [discussion answers](STUDENT-QUESTIONS.md).
+
+```mermaid
+flowchart LR
+    U[User] -->|1. approve collateral spending| C[MockUSDC: 6 decimals]
+    U -->|2. deposit amount| V[Vault]
+    C -->|transferFrom user to vault| V
+    V -->|mint to user: MINTER_ROLE| S[SimpleStablecoin: 6 decimals]
+    U -->|3. redeem amount| V
+    V -->|burn caller balance| S
+    V -->|return collateral to caller| U
+    A[Admin] -->|grant roles| S
+    P[Pauser] -->|pause all balance updates| S
+```
+
+The normal loop preserves equal collateral and supply. Direct collateral donations can produce a surplus, so the backing invariant uses `>=`. Authorized unbacked minting breaks backing. The no-stablecoin-in-vault property is scoped to the tested deposit/redeem operations; arbitrary transfers can invalidate it.
+
+```mermaid
+flowchart LR
+    B[Borrower] -->|deposit 18-decimal mWETH| O[OverCollateralizedVault]
+    F[MockPriceFeed: 8 decimals] -->|collateral valuation| O
+    O -->|mint 6-decimal sUSD at ratio >=150%| B
+    L[Liquidator] -->|burn own sUSD for borrower debt| O
+    O -->|seize collateral plus 10% bonus, capped at balance| L
+```
+
+Liquidation requires a ratio below 120%. A liquidator must pay the whole debt even when collateral is insufficient; voluntary liquidation may be uneconomic. The mock oracle, permission model, and fixed decimal assumptions are educational limitations.
+
+Verified locally with Foundry v1.8.4 / Solidity 0.8.24: **29 tests passed, 0 failed**, including Ex7. The invariant run used 256 runs and 128,000 calls with zero reverts. See [test output](evidence/forge-test.txt), [environment checks](evidence/doctor.txt), and [actual local-chain execution](evidence/local-demo.txt). No Sepolia deployment or verification is claimed.
+
+Ex3 actual result: `totalSupply = 1000600000000`, `totalCollateral = 600000000` (both 6-decimal raw units). This demonstrates undercollateralization; there is no exchange price feed in this lab that measures a market depeg.
+
+The upstream Windows installation statement is outdated: [official Foundry v1.8.4 releases](https://github.com/foundry-rs/foundry/releases/tag/v1.8.4) include Windows binaries. The local tool archive was checked against its published SHA256.
+
+### Codespaces execution screenshots
+
+These original screenshots document the student's Codespaces execution:
+
+- Ex1: after redeeming 400 sUSD, supply, collateral and user sUSD balance are each 600 tokens; user mUSDC balance is 400 tokens.
+- Ex3: after authorized unbacked minting, supply is 1,000,600 sUSD while collateral remains 600 mUSDC.
+
+![Ex1 redemption balances](evidence/ex1-redeem.png)
+
+![Ex3 unbacked issuance](evidence/ex3-depeg.png)
+
+### Codespaces final test verification
+
+After restoring the original Ex5 acceptance-test file, the Codespaces run passed **28 tests, 0 failed, 0 skipped**, including the ten original Ex5 tests, Ex7, and both invariant properties. The invariant run made 128,000 calls with zero reverts. The local 29-test run also includes an additional handler smoke test; this accounts for the one-test difference.
+
+![Ex5: ten original acceptance tests passed](evidence/ex5-tests.png)
+
+![Codespaces: all 28 tests passed](evidence/forge-test.png)

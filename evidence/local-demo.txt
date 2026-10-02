@@ -1,0 +1,91 @@
+**********************
+PowerShell transcript start
+Start time: 20261002102152
+Username: LAPTOP-UE4KR31D\泽哥
+RunAs User: LAPTOP-UE4KR31D\泽哥
+Configuration Name: 
+Machine: LAPTOP-UE4KR31D (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Users\泽哥\.cache\codex-runtimes\codex-primary-runtime\dependencies\native\powershell\pwsh.dll -NoProfile -Command try { [Console]::OutputEncoding=[System.Text.Encoding]::UTF8 } catch {}
+@'
+param([string]$FoundryBin = '', [string]$Rpc = 'http://127.0.0.1:8545')
+$ErrorActionPreference = 'Stop'
+Set-Location (Split-Path $PSScriptRoot -Parent)
+if ($FoundryBin) { $env:PATH = "$FoundryBin;$env:PATH" }
+New-Item -ItemType Directory -Force evidence | Out-Null
+# These are PUBLIC Anvil development keys, never use them on a public network.
+$adminKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
+$attackKey = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d'
+function Cast-Checked {
+    $result = & cast @args
+    if ($LASTEXITCODE -ne 0) { throw "cast failed: $($args[0])" }
+    return $result
+}
+if ((Cast-Checked chain-id --rpc-url $Rpc).Trim() -ne '31337') { throw 'Local Anvil chain 31337 required.' }
+$previousKey = $env:PRIVATE_KEY
+Start-Transcript -Path evidence/local-demo.txt -Force
+try {
+    $env:PRIVATE_KEY = $adminKey
+    & forge script script/Deploy.s.sol:Deploy --rpc-url $Rpc --broadcast
+    if ($LASTEXITCODE -ne 0) { throw 'Deployment failed' }
+    $deployment = Get-Content broadcast/Deploy.s.sol/31337/run-latest.json -Raw | ConvertFrom-Json
+    $usdc = ($deployment.transactions | Where-Object contractName -eq MockUSDC | Select-Object -First 1).contractAddress
+    $stable = ($deployment.transactions | Where-Object contractName -eq SimpleStablecoin | Select-Object -First 1).contractAddress
+    $vault = ($deployment.transactions | Where-Object contractName -eq Vault | Select-Object -First 1).contractAddress
+    if (!$usdc -or !$stable -or !$vault) { throw 'Missing deployment addresses' }
+    $admin = Cast-Checked wallet address --private-key $adminKey
+    $attacker = Cast-Checked wallet address --private-key $attackKey
+    Write-Host "USDC=$usdc SUSD=$stable VAULT=$vault"
+    Cast-Checked send $usdc 'faucet(address,uint256)' $admin 1000000000 --rpc-url $Rpc --private-key $adminKey | Out-Null
+    Cast-Checked send $usdc 'approve(address,uint256)' $vault 1000000000 --rpc-url $Rpc --private-key $adminKey | Out-Null
+    Cast-Checked send $vault 'deposit(uint256)' 1000000000 --rpc-url $Rpc --private-key $adminKey | Out-Null
+    $supplyDeposit = Cast-Checked call $stable 'totalSupply()(uint256)' --rpc-url $Rpc
+    $collateralDeposit = Cast-Checked call $vault 'totalCollateral()(uint256)' --rpc-url $Rpc
+    Write-Host "Ex1 AFTER DEPOSIT: supply=$supplyDeposit collateral=$collateralDeposit"
+    Cast-Checked send $vault 'redeem(uint256)' 400000000 --rpc-url $Rpc --private-key $adminKey | Out-Null
+    $supplyRedeem = Cast-Checked call $stable 'totalSupply()(uint256)' --rpc-url $Rpc
+    $collateralRedeem = Cast-Checked call $vault 'totalCollateral()(uint256)' --rpc-url $Rpc
+    Write-Host "Ex1 AFTER REDEEM: supply=$supplyRedeem collateral=$collateralRedeem"
+    Write-Host 'Ex3 unauthorized mint MUST fail:'
+    & cast send $stable 'mint(address,uint256)' $attacker 1000000000000 --rpc-url $Rpc --private-key $attackKey
+    if ($LASTEXITCODE -eq 0) { throw 'Unauthorized mint unexpectedly succeeded' }
+    $role = Cast-Checked keccak MINTER_ROLE
+    Cast-Checked send $stable 'grantRole(bytes32,address)' $role $attacker --rpc-url $Rpc --private-key $adminKey | Out-Null
+    Cast-Checked send $stable 'mint(address,uint256)' $attacker 1000000000000 --rpc-url $Rpc --private-key $attackKey | Out-Null
+    $supplyAttack = Cast-Checked call $stable 'totalSupply()(uint256)' --rpc-url $Rpc
+    $collateralAttack = Cast-Checked call $vault 'totalCollateral()(uint256)' --rpc-url $Rpc
+    Write-Host "Ex3 AFTER UNBACKED MINT: totalSupply=$supplyAttack totalCollateral=$collateralAttack"
+    if (($supplyDeposit -split ' ')[0] -ne '1000000000' -or ($collateralDeposit -split ' ')[0] -ne '1000000000') { throw 'Deposit mismatch' }
+    if (($supplyRedeem -split ' ')[0] -ne '600000000' -or ($collateralRedeem -split ' ')[0] -ne '600000000') { throw 'Redeem mismatch' }
+    if (($supplyAttack -split ' ')[0] -ne '1000600000000' -or ($collateralAttack -split ' ')[0] -ne '600000000') { throw 'Attack mismatch' }
+    @{ chainId=31337; rpc=$Rpc; usdc=$usdc; stable=$stable; vault=$vault; depositSupply=$supplyDeposit; depositCollateral=$collateralDeposit; redeemSupply=$supplyRedeem; redeemCollateral=$collateralRedeem; attackSupply=$supplyAttack; attackCollateral=$collateralAttack } | ConvertTo-Json | Set-Content evidence/local-demo.json
+    Write-Host 'PASS: deposit, redeem, rejected unauthorized mint, and unbacked issuance verified.'
+} finally {
+    $env:PRIVATE_KEY = $previousKey
+    Stop-Transcript
+}
+'@ | Set-Content -Encoding utf8 scripts/demo-local.ps1
+& ./scripts/demo-local.ps1 -FoundryBin (Resolve-Path ../../work/foundry).Path
+Process ID: 1928
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is evidence/local-demo.txt
+
+USDC=0x5fbdb2315678afecb367f032d93f642f64180aa3 SUSD=0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 VAULT=0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0
+Ex1 AFTER DEPOSIT: supply=1000000000 [1e9] collateral=1000000000 [1e9]
+Ex1 AFTER REDEEM: supply=600000000 [6e8] collateral=600000000 [6e8]
+Ex3 unauthorized mint MUST fail:
+
+Ex3 AFTER UNBACKED MINT: totalSupply=1000600000000 [1e12] totalCollateral=600000000 [6e8]
+PASS: deposit, redeem, rejected unauthorized mint, and unbacked issuance verified.
+**********************
+PowerShell transcript end
+End time: 20261002102208
+**********************
